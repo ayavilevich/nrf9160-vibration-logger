@@ -6,9 +6,17 @@
 / {
 	aliases {
 		temp-sensor = &bme680;
+		accelerometer = &adxl362;
+		impact-sensor = &adxl372;
 	};
 };
 
 &i2c2 {
 	bme680: bme680@76 {};
+};
+
+&spi3 {
+	adxl362: adxl362@0 {
+		// autosleep;
+	};
 };

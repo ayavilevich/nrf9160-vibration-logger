@@ -24,6 +24,8 @@
 #include "location_tracking.h"
 #include "led_control.h"
 
+#include "vibration.h"
+
 LOG_MODULE_REGISTER(application, CONFIG_MQTT_MULTI_SERVICE_LOG_LEVEL);
 
 /* Timer used to time the sensor sampling rate. */
@@ -333,7 +335,7 @@ void main_application_thread_fn(void)
 	/* Wait for first connection before starting the application. */
 	(void)await_connection(K_FOREVER);
 
-	(void)nrf_cloud_alert_send(ALERT_TYPE_DEVICE_NOW_ONLINE, 0, NULL);
+	// (void)nrf_cloud_alert_send(ALERT_TYPE_DEVICE_NOW_ONLINE, 0, NULL);
 
 	/* Wait for the date and time to become known.
 	 * This is needed both for location services and for sensor sample timestamping.
@@ -356,6 +358,8 @@ void main_application_thread_fn(void)
 
 	int counter = 0;
 
+	start_vibration_tracking();
+
 	/* Begin sampling sensors. */
 	while (true) {
 		/* Start the sensor sample interval timer.
@@ -372,9 +376,9 @@ void main_application_thread_fn(void)
 
 			if (get_temperature(&temp) == 0) {
 				LOG_INF("Temperature is %d degrees C", (int)temp);
-				(void)send_sensor_sample(NRF_CLOUD_JSON_APPID_VAL_TEMP, temp);
+				// (void)send_sensor_sample(NRF_CLOUD_JSON_APPID_VAL_TEMP, temp);
 
-				monitor_temperature(temp);
+				// monitor_temperature(temp);
 			}
 		}
 
@@ -382,6 +386,10 @@ void main_application_thread_fn(void)
 			LOG_INF("Sent test counter = %d", counter);
 			(void)send_sensor_sample("COUNT", counter++);
 		}
+
+		double vibration = get_vibration_measurement();
+		LOG_INF("Vibration is %d", (int)vibration);
+		(void)send_sensor_sample("VIBRATION", vibration);
 
 		/* Wait out any remaining time on the sample interval timer. */
 		k_timer_status_sync(&sensor_sample_timer);

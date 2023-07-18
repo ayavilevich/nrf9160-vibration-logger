@@ -18,6 +18,7 @@ target_sources(app PRIVATE src/temperature.c)
 target_sources(app PRIVATE src/fota_support.c)
 target_sources(app PRIVATE src/led_control.c)
 target_sources(app PRIVATE src/location_tracking.c)
+target_sources(app PRIVATE src/vibration.c)
 # NORDIC SDK APP END
 
 zephyr_include_directories(src)
