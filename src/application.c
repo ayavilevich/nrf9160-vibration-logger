@@ -16,6 +16,10 @@
 #include <cJSON.h>
 #include <stdio.h>
 
+#if defined(CONFIG_ADP536X)
+#include <adp536x.h>
+#endif
+
 #include "nrf_cloud_codec_internal.h"
 #include "application.h"
 #include "temperature.h"
@@ -25,6 +29,10 @@
 #include "led_control.h"
 
 #include "vibration.h"
+
+#ifdef CONFIG_CLOUD_THINGSBOARD_COAP
+#include "tb_coap.h"	
+#endif // CONFIG_CLOUD_THINGSBOARD_COAP
 
 LOG_MODULE_REGISTER(application, CONFIG_MQTT_MULTI_SERVICE_LOG_LEVEL);
 
@@ -349,19 +357,25 @@ void main_application_thread_fn(void)
 
 	nrf_cloud_log_init();
 	/* Send a direct log to the nRF Cloud web portal indicating the sample has started up. */
-	nrf_cloud_log_send(LOG_LEVEL_INF, "nRF Cloud MQTT multi-service sample v%s",
-			   CONFIG_APP_VERSION);
+	// nrf_cloud_log_send(LOG_LEVEL_INF, "nRF Cloud MQTT multi-service sample v%s", CONFIG_APP_VERSION);
 
 	/* Begin tracking location at the configured interval. */
-	(void)start_location_tracking(on_location_update,
-					CONFIG_LOCATION_TRACKING_SAMPLE_INTERVAL_SECONDS);
+	(void)start_location_tracking(on_location_update, CONFIG_LOCATION_TRACKING_SAMPLE_INTERVAL_SECONDS);
 
 	int counter = 0;
 
+	LOG_INF("Start vibration tracking");
 	start_vibration_tracking();
+#ifdef CONFIG_CLOUD_THINGSBOARD_COAP
+	LOG_INF("Start TB CoAP cloud transport");
+	start_tb_coap();
+#endif // CONFIG_CLOUD_THINGSBOARD_COAP
 
 	/* Begin sampling sensors. */
+	int iteration = 0;
+	const int detailedIterationInterval = 50; // 50x for production use. move to config?
 	while (true) {
+		bool detailedIteration = (iteration++) % detailedIterationInterval == 0;
 		/* Start the sensor sample interval timer.
 		 * We use a timer here instead of merely sleeping the thread, because the
 		 * application thread can be preempted by other threads performing long tasks
@@ -376,7 +390,11 @@ void main_application_thread_fn(void)
 
 			if (get_temperature(&temp) == 0) {
 				LOG_INF("Temperature is %d degrees C", (int)temp);
-				// (void)send_sensor_sample(NRF_CLOUD_JSON_APPID_VAL_TEMP, temp);
+				if (detailedIteration)
+				{
+					(void)send_sensor_sample(NRF_CLOUD_JSON_APPID_VAL_TEMP, temp);
+					tb_coap_send_telemetry("temp", temp);
+				}
 
 				// monitor_temperature(temp);
 			}
@@ -384,12 +402,44 @@ void main_application_thread_fn(void)
 
 		if (IS_ENABLED(CONFIG_TEST_COUNTER)) {
 			LOG_INF("Sent test counter = %d", counter);
-			(void)send_sensor_sample("COUNT", counter++);
+			if (detailedIteration)
+			{
+				(void)send_sensor_sample("COUNT", counter++);
+			}
 		}
 
 		double vibration = get_vibration_measurement();
 		LOG_INF("Vibration is %d", (int)vibration);
-		(void)send_sensor_sample("VIBRATION", vibration);
+		if (detailedIteration)
+		{
+			(void)send_sensor_sample("VIBRATION", vibration);
+			tb_coap_send_telemetry("it", iteration);
+			// measure battery
+#if defined(CONFIG_ADP536X)
+			uint8_t percentage;
+			int err = adp536x_fg_soc(&percentage);
+			if (err) {
+				LOG_ERR("Failed to get battery level: %d", err);
+			}
+			else
+			{
+				tb_coap_send_telemetry("batp", percentage);
+			}
+			uint16_t voltage;
+			err = adp536x_fg_volts(&voltage);
+			if (err) {
+				LOG_ERR("Failed to get battery voltage: %d", err);
+			}
+			else
+			{
+				tb_coap_send_telemetry("batv", voltage);
+			}
+#endif
+		}
+#ifdef CONFIG_CLOUD_THINGSBOARD_COAP
+		// high frequency iteration
+		tb_coap_send_telemetry("vib", vibration);
+#endif // CONFIG_CLOUD_THINGSBOARD_COAP
 
 		/* Wait out any remaining time on the sample interval timer. */
 		k_timer_status_sync(&sensor_sample_timer);

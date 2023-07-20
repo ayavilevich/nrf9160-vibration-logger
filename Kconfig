@@ -234,6 +234,25 @@ config AT_CMD_REQUEST_RESPONSE_BUFFER_LENGTH
 	  error code sent in its place (-NRF_E2BIG). Cannot be less than 40 bytes.
 	default 200
 
+config CLOUD_THINGSBOARD_COAP
+	select COAP_UTILS
+	bool "Enables reporting to Thingsboard cloud"
+	default y
+
+config CLOUD_THINGSBOARD_COAP_SERVER_HOSTNAME
+	depends on CLOUD_THINGSBOARD_COAP
+	string "Thingsboard CoAP server hostname"
+	default "demo.thingsboard.io"
+
+config CLOUD_THINGSBOARD_COAP_SERVER_PORT
+	depends on CLOUD_THINGSBOARD_COAP
+	int "CoAP server port"
+	default 5683
+	
+config CLOUD_THINGSBOARD_COAP_ACCESS_TOKEN
+	depends on CLOUD_THINGSBOARD_COAP
+	string "Thingsboard device access token (TBD, move value to sec storage in the SoC)"
+
 endmenu
 
 module = MQTT_MULTI_SERVICE
