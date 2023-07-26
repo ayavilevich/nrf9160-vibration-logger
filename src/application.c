@@ -15,6 +15,7 @@
 #include <date_time.h>
 #include <cJSON.h>
 #include <stdio.h>
+#include <modem/modem_info.h>
 
 #if defined(CONFIG_ADP536X)
 #include <adp536x.h>
@@ -333,6 +334,11 @@ static void monitor_temperature(double temp)
 
 void main_application_thread_fn(void)
 {
+	int err = modem_info_init();
+	if (err) {
+		LOG_ERR("Failed initializing modem info module, error: %d", err);
+	}
+
 	if (IS_ENABLED(CONFIG_AT_CMD_REQUESTS)) {
 		/* Register with connection.c to receive general device messages and check them for
 		 * AT command requests.
@@ -414,6 +420,16 @@ void main_application_thread_fn(void)
 		{
 			(void)send_sensor_sample("VIBRATION", vibration);
 			tb_coap_send_telemetry("it", iteration);
+
+			// Request "Reference Signal Receive Power" from modem
+			int16_t modem_rsrp = 0;
+			err = modem_info_short_get(MODEM_INFO_RSRP, &modem_rsrp); // RSRP raw values that represent actual signal strength are 0 through 97.
+			if (err != sizeof(modem_rsrp)) {
+				LOG_ERR("modem_info_short_get, error: %d", err);
+				return err;
+			}
+			tb_coap_send_telemetry("rsrp", modem_rsrp);
+
 			// measure battery
 #if defined(CONFIG_ADP536X)
 			uint8_t percentage;
