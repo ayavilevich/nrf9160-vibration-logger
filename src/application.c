@@ -399,7 +399,7 @@ void main_application_thread_fn(void)
 				if (detailedIteration)
 				{
 					(void)send_sensor_sample(NRF_CLOUD_JSON_APPID_VAL_TEMP, temp);
-					tb_coap_send_telemetry("temp", temp);
+					tb_coap_send_telemetry_double("temp", temp);
 				}
 
 				// monitor_temperature(temp);
@@ -415,20 +415,19 @@ void main_application_thread_fn(void)
 		}
 
 		double vibration = get_vibration_measurement();
-		LOG_INF("Vibration is %d", (int)vibration);
+		LOG_INF("Vibration is %f", vibration);
 		if (detailedIteration)
 		{
 			(void)send_sensor_sample("VIBRATION", vibration);
-			tb_coap_send_telemetry("it", iteration);
+			tb_coap_send_telemetry_int("it", iteration);
 
 			// Request "Reference Signal Receive Power" from modem
 			int16_t modem_rsrp = 0;
 			err = modem_info_short_get(MODEM_INFO_RSRP, &modem_rsrp); // RSRP raw values that represent actual signal strength are 0 through 97.
 			if (err != sizeof(modem_rsrp)) {
 				LOG_ERR("modem_info_short_get, error: %d", err);
-				return err;
 			}
-			tb_coap_send_telemetry("rsrp", modem_rsrp);
+			tb_coap_send_telemetry_int("rsrp", modem_rsrp);
 
 			// measure battery
 #if defined(CONFIG_ADP536X)
@@ -439,7 +438,7 @@ void main_application_thread_fn(void)
 			}
 			else
 			{
-				tb_coap_send_telemetry("batp", percentage);
+				tb_coap_send_telemetry_int("batp", percentage);
 			}
 			uint16_t voltage;
 			err = adp536x_fg_volts(&voltage);
@@ -448,13 +447,13 @@ void main_application_thread_fn(void)
 			}
 			else
 			{
-				tb_coap_send_telemetry("batv", voltage);
+				tb_coap_send_telemetry_int("batv", voltage);
 			}
 #endif
 		}
 #ifdef CONFIG_CLOUD_THINGSBOARD_COAP
 		// high frequency iteration
-		tb_coap_send_telemetry("vib", vibration);
+		tb_coap_send_telemetry_double("vib", vibration);
 #endif // CONFIG_CLOUD_THINGSBOARD_COAP
 
 		/* Wait out any remaining time on the sample interval timer. */

@@ -8,7 +8,7 @@
 #include "vibration.h"
 
 #define ACCELEROMETER_CHANNELS 3
-#define SAMPLES_IN_MEASUREMENT 100
+#define SAMPLES_IN_MEASUREMENT 500
 
 LOG_MODULE_REGISTER(vibration, CONFIG_MQTT_MULTI_SERVICE_LOG_LEVEL);
 
@@ -53,12 +53,13 @@ static void accel_trigger_handler(const struct device *dev,
 
 		if (samples_to_make <= 0) // start a new measurement
 		{
-			measurement = measurement_in_progress; // finalize in-progress measurement
-			LOG_DBG("%6.2f", measurement);
+			measurement = measurement_in_progress / SAMPLES_IN_MEASUREMENT; // finalize in-progress measurement and normalize
+			LOG_DBG("%6.4f", measurement);
 			samples_to_make = SAMPLES_IN_MEASUREMENT;
 			measurement_in_progress = 0;
 		}
-		measurement_in_progress += fabs(sample[0] - previous_sample[0]) + fabs(sample[1] - previous_sample[1])+ fabs(sample[2] - previous_sample[2]); // measure diff from prev sample
+		// measurement_in_progress += fabs(sample[0] - previous_sample[0]) + fabs(sample[1] - previous_sample[1])+ fabs(sample[2] - previous_sample[2]); // measure diff from prev sample
+		measurement_in_progress += sqrt((sample[0] - previous_sample[0])*(sample[0] - previous_sample[0]) + (sample[1] - previous_sample[1])*(sample[1] - previous_sample[1]) + (sample[2] - previous_sample[2])*(sample[2] - previous_sample[2])); // measure proper diff vector length
 		samples_to_make--;
 
 		// store current as previous

@@ -62,13 +62,28 @@ void start_tb_coap()
 	coap_init(server.sa_family, NULL);
 }
 
-int tb_coap_send_telemetry(const char * name, int value)
+int tb_coap_send_telemetry_int(const char * name, int value)
 {
 	LOG_DBG("coap name: %s", name);
 	// format as JSON. this is a simple case, so don't use a serialization library
 	char payload[10 + strlen(name) + 10]; // {"name": value}
 	snprintf(payload, sizeof(payload), "{\"%s\":%d}", name, value);
 	LOG_DBG("coap payload: %s", payload);
+	return tb_coap_send_telemetry_payload_string(name, payload);
+}
+
+int tb_coap_send_telemetry_double(const char * name, double value)
+{
+	LOG_DBG("coap name: %s", name);
+	// format as JSON. this is a simple case, so don't use a serialization library
+	char payload[10 + strlen(name) + 10]; // {"name": value}
+	snprintf(payload, sizeof(payload), "{\"%s\":%f}", name, value);
+	LOG_DBG("coap payload: %s", payload);
+	return tb_coap_send_telemetry_payload_string(name, payload);
+}
+
+int tb_coap_send_telemetry_payload_string(const char * name, const char * payload)
+{
 	// make path
 	char path[20 + strlen(CONFIG_CLOUD_THINGSBOARD_COAP_ACCESS_TOKEN)];
 	snprintf(path, sizeof(path), "api/v1/%s/telemetry", CONFIG_CLOUD_THINGSBOARD_COAP_ACCESS_TOKEN);
